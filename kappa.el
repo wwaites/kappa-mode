@@ -31,8 +31,6 @@
 ;; `kappa-mode` is a GNU/Emacs major mode for editing files written in
 ;; the Kappa modeling language.
 
-;;; Customization stuff
-
 ;; Customization group for Kappa mode.
 (defgroup kappa nil
   "Kappa mode customization."
@@ -232,5 +230,141 @@ variables and file names in Font-Lock mode."
     (setq tab-width kappa-tab-width))
   (setq comment-start "//")
   (setq comment-end ""))
+
+;;;
+;;; Running simulations
+;;;
+
+;; Customisation of simulation-related parameters
+(defcustom kappa-sim-executable-path (executable-find "KaSim")
+  "File system path to the Kappa simulator executable."
+  :type 'file
+  :group 'kappa)
+
+(defcustom kappa-gnuplot-executable-path (executable-find "gnuplot")
+  "File system path to the Gnuplot executable."
+  :type 'file
+  :group 'kappa)
+
+(defcustom kappa-default-sim-time 200
+  "Default simulation duration."
+  :type 'number
+  :group 'kappa)
+
+(defcustom kappa-default-sim-events 0
+  "Default number of events to produce per simulation."
+  :type 'number
+  :group 'kappa)
+
+(defcustom kappa-default-sim-points 1
+  "Default time between output points."
+  :type 'number
+  :group 'kappa)
+
+;; Buffer-local variables to remember the values of the arguments of
+;; previous invocation of `kappa-run-sim' and `kappa-plot-sim'.
+(defvar kappa-prev-sim-output-file ""
+  "Value of the `output' or `file-path' argument during the
+previous invocation of `kappa-run-sim' or `kappa-plot-sim',
+respectively.")
+(defvar kappa-prev-sim-time kappa-default-sim-time
+  "Value of the `time' argument during the previous invocation of
+`kappa-run-sim'.")
+(defvar kappa-prev-sim-events kappa-default-sim-events
+  "Value of the `events' argument during the previous invocation
+of `kappa-run-sim'.")
+(defvar kappa-prev-sim-points kappa-default-sim-points
+  "Value of the `points' argument during the previous invocation
+of `kappa-run-sim'.")
+(defvar kappa-prev-plot-columns "1:2"
+  "Value of the `columns' argument during the previous invocation
+of `kappa-plot-sim'.")
+(defvar kappa-sim-buffer-counter 1
+  "Counts the number of simulation buffers in Kappa major mode")
+
+(defun kappa-get-abs-dirname (path)
+  "Return the absolute directory name of PATH."
+  (file-name-directory (file-truename path)))
+
+(defun kappa-run-sim (input output time events points force)
+  "Input:
+  INPUT: File path to the Kappa model.
+  OUTPUT: Path to the simulation output file.
+  TIME: Time (integer). Default is the value of
+        `kappa-default-sim-time'.
+  EVENTS: Number of events (integer). Default is the value of
+          `kappa-default-sim-events'.
+  POINTS: Number of points (integer). Default is the value of
+          `kappa-default-sim-points'.
+  FORCE: Overwrite output file without confirmation if it exists.
+         Default is nil.
+
+Output: none.
+
+Side Effects: Prints the shell command to be executed to
+*Messages*, Creates *Simulation* buffer, and runs
+`kappa-sim-executable-path' in shell with the appropriate
+arguments.
+
+Related customization variables: `kappa-sim-executable-path',
+`kappa-default-sim-time', `kappa-default-sim-events',
+`kappa-default-sim-points'.
+"
+  (interactive
+    (list (expand-file-name
+           (read-file-name
+            "Input: " (file-truename buffer-file-name)
+            (file-truename buffer-file-name) 'confirm))
+          (expand-file-name
+           (read-file-name
+            "Output: " (file-truename kappa-prev-sim-output-file)
+            (file-truename kappa-prev-sim-output-file)))
+          (read-number "Time: " kappa-prev-sim-time)
+          (read-number "Events: " kappa-prev-sim-events)
+          (read-number "Points: " kappa-prev-sim-points)
+	  nil))
+
+  ;; Save parameters for later
+  (setq kappa-prev-sim-output-file output)
+  (setq kappa-prev-sim-time time)
+  (setq kappa-prev-sim-events events)
+  (setq kappa-prev-sim-points points)
+
+  ;; Construct the command line and try running the simulator in a
+  ;; separate buffer.
+  (let ((args (append (list "-i" input
+                            "-o" (file-name-nondirectory output)
+                            "-d" (kappa-get-abs-dirname output))
+                      (cond
+                       ((> time 0)   (list "-u" "time" "-l"
+                                           (number-to-string time)))
+                       ((> events 0) (list "-u" "event" "-l"
+                                           (number-to-string events))))
+                      (when points
+                        (list "-p" (number-to-string points)))))
+        (buffer-name (concat "*Simulation (" (file-name-nondirectory input)
+                             ") " (number-to-string kappa-sim-buffer-counter)
+                             "*")))
+
+    (when (file-exists-p output)
+      (if (or force (y-or-n-p (concat "Output file '" output
+				      "' exists. Would you like to delete it to run "
+				      "the simulation?")))
+          (delete-file output)
+        (error "%s" (concat "Output file " output
+                            " has not been overwritten"))))
+
+    ;; Save the command to *Message* buffer and run the simulation
+    (message "Running simulation process: %s %s"
+             kappa-sim-executable-path (mapconcat 'identity args " "))
+    (let ((out-buffer (get-buffer-create buffer-name)))
+      (display-buffer out-buffer)
+      (apply 'call-process
+             (append (list kappa-sim-executable-path nil out-buffer t)
+                     args)))
+
+    (setq kappa-sim-buffer-counter (+ 1 kappa-sim-buffer-counter))
+    (message (format (concat "Done! See " buffer-name
+                             " buffer for details")))))
 
 (provide 'kappa-mode)
