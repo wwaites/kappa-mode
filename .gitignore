@@ -1,4 +1,7 @@
 *~
+*.html
+*.tex
+*.pdf
 *.png
 *.csv
 *.ka
