@@ -29,7 +29,15 @@
 ;;; Commentary:
 
 ;; `kappa-mode` is a GNU/Emacs major mode for editing files written in
-;; the Kappa modeling language.
+;; the Kappa modeling language and running them in the simulator.
+;; The mode knows enough about Kappa syntax to do some basic
+;; fontification but does currently not do indentation or proper
+;; slashification.
+
+;; There are numerous font face customization variables and a
+;; convenience function for running simulations. For simple plotting
+;; of results, see `ob-kappa.el' which integrates with `org-mode'
+
 
 ;; Customization group for Kappa mode.
 (defgroup kappa nil
