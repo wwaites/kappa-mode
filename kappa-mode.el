@@ -250,16 +250,19 @@ variables and file names in Font-Lock mode."
   "Default simulation duration."
   :type 'number
   :group 'kappa)
+;(defvar kappa-default-sim-time kappa-default-sim-time)
 
 (defcustom kappa-default-sim-events 0
   "Default number of events to produce per simulation."
   :type 'number
   :group 'kappa)
+;(defvar kappa-default-sim-events kappa-default-sim-events)
 
 (defcustom kappa-default-sim-points 1
   "Default time between output points."
   :type 'number
   :group 'kappa)
+;(defvar kappa-default-sim-points kappa-default-sim-points)
 
 ;; Buffer-local variables to remember the values of the arguments of
 ;; previous invocation of `kappa-run-sim' and `kappa-plot-sim'.
