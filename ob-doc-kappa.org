@@ -1,0 +1,208 @@
+#+OPTIONS:    H:3 num:nil toc:2 \n:nil ::t |:t ^:{} -:t f:t *:t tex:t d:(HIDE) tags:not-in-toc
+#+STARTUP:    align fold nodlcheck hidestars oddeven lognotestate hideblocks
+#+SEQ_TODO:   TODO(t) INPROGRESS(i) WAITING(w@) | DONE(d) CANCELED(c@)
+#+TAGS:       Write(w) Update(u) Fix(f) Check(c) noexport(n)
+#+TITLE:      Org-babel-kappa
+#+AUTHOR:     William Waites
+#+LANGUAGE:   en
+#+HTML_LINK_UP:    index.html
+#+HTML_LINK_HOME:  https://orgmode.org/worg/
+
+#+begin_export html
+  <div id="subtitle" style="float: center; text-align: center;">
+  <p>
+  Org Babel support for the
+  <a href="https://kappalanguage.org/">Kappa Language</a>
+  </p>
+  </div>
+#+end_export
+
+* Introduction
+
+An /Emacs Org Babel language/ - provided to allow literate programming
+in the [[https://kappalanguage.org/][Kappa modelling language]]. A prerequisite, of course, is to have
+=KaSim=, the Kappa language simulator installed. It is free software and
+can be downloaded from that web site or built from source. It is also
+helpful to have [[https://gnuplot.info/][gnuplot]] installed for looking at the output of
+simulations.
+
+
+* Installation
+** From MELPA
+This is the usual way to install. Simply add the standard incantation
+to your =init.el=,
+#+BEGIN_SRC emacs-lisp :exports code
+(require 'package)
+(add-to-list 'package-archives
+	     '("melpa" . "https://melpa.org/packages/") t)
+#+END_SRC
+
+and then install this package using =M-x package-install= and select
+=kappa-mode=.
+** From Source
+The source repositories for this package are:
+- https://git.sr.ht/~wwaites/kappa-mode (main repository)
+- https://github.com/~wwaites/kappa-mode (backup)
+
+It is sufficient to clone one of these and then add the following to
+your =init.el= so that Emacs might find the code.
+#+BEGIN_SRC emacs-lisp :exports code
+(add-to-list 'load-path "/some/where/kappa-mode")
+#+END_SRC
+
+* Setup
+Once =kappa-mode= and attendant =org-mode= integration is installed, add
+the following to your =init.el= to enable evaluation of Kappa language
+code for simulation and gnuplot code for plotting.
+
+#+BEGIN_SRC emacs-lisp :exports code
+(org-babel-do-load-languages
+ 'org-babel-load-languages
+ '((emacs-lisp . t)
+   (kappa . t)
+   (gnuplot . t)))
+#+END_SRC
+
+* Requirements
+
+- The =KaSim= software, either from the [[https://tools.kappalanguage.org/nightly-builds/][binary distribution]] or built [[https://github.com/Kappa-Dev/KappaTools][from source]]
+- [[https://gnuplot.info/][gnuplot]] for producing plots
+ 
+* Examples
+** Generic gnuplot boilerplate
+This fragment of gnuplot code will be reused for all of the plots. We
+will use the [[https://orgmode.org/manual/Noweb-Reference-Syntax.html][noweb]] syntax later to include it in the actual gnuplot
+code blocks that produce the plots. Normally we might put
+=:exports none= in the header parameters so that we don't see it when
+exporting to HTML or LaTeX, but here we use =:exports code= for
+clarity.
+
+#+NAME: kappaplot
+#+BEGIN_SRC gnuplot :exports code :eval no
+  set autoscale
+  set xtic auto
+  set ytic auto
+  set key autotitle columnhead
+  set ylabel "Count"
+  set xlabel "Time"
+  set datafile separator ","
+#+END_SRC
+
+** A simple SIR model using discrete agents
+This model is a direct transcription of the classic
+[[https://en.wikipedia.org/wiki/Compartmental_models_in_epidemiology][Susceptible-Infectious-Removed compartmental model]]. This formulation
+is not especially idiomatic in Kappa, but it works.
+#+NAME: simple_sir
+#+BEGIN_SRC kappa :time 60 :exports code :file simple_sir.csv
+  %var: beta  0.3
+  %var: gamma 0.1
+  %var: N 1000
+
+  %agent: S()
+  %agent: I()
+  %agent: R()
+
+  'infection' S(), ., I() -> ., I(), I() @ beta/N
+  'removal'   I(), .      -> ., R()      @ gamma
+
+  %obs: S |S()|
+  %obs: I |I()|
+  %obs: R |R()|
+
+  %init: 0.95*N S()
+  %init: 0.05*N I()
+#+END_SRC
+
+This code block can be evaluated in the usual way with the =C-c C-c=
+keystroke and will return the filename containing the simulation
+output. By default this will be a temporary file, but we can specify
+that we want to write to a particular file using the =:file= header
+parameter.
+
+We can plot it using the the previously defined boilerplate and just
+saying what observables we want to plot. Be careful to =reset= the
+gnuplot state afterwards because a single process is used to render
+all images and it can get confused.
+
+To glue the ploting code to the simulation code we need to name the
+simulation (using =#+NAME:=) and we then pass this name using the
+=data= variable to gnuplot.
+
+#+NAME: plot_simple_sir
+#+BEGIN_SRC gnuplot :var data=simple_sir :noweb yes :exports both :file simple_sir.png
+  <<kappaplot>>
+  plot data using 1:2 with lines, \
+       data using 1:3 with lines, \
+       data using 1:4 with lines
+  reset
+#+END_SRC
+
+#+RESULTS: plot_simple_sir
+[[file:simple_sir.png]]
+** A more idiomatic version of the simple SIR model using internal states
+This is the same model but implemented using /internal states/ of the
+agent =P= (for "person"). It is much more succinct and uses /edit
+notation/ for the rules since all they do is modify the internal
+state.
+#+NAME: istate_sir_model
+#+BEGIN_SRC kappa :time 60 :exports code
+  %var: gamma 0.1
+  %var: N 1000
+
+  %agent: P(d{s i r})
+
+  'infection' P(d{s/i}), P(d{i}) @ beta/N
+  'removal'   P(d{i/r})          @ gamma
+
+  %obs: S |P(d{s})|
+  %obs: I |P(d{i})|
+  %obs: R |P(d{r})|
+
+  %init: 0.95*N P(d{s})
+  %init: 0.05*N P(d{i})
+#+END_SRC
+
+In this case, we have left a parameter out of the model, =beta=. We can
+specify it by using =#+CALL= on the (named) fragment.
+
+#+NAME: istate_sir_sim
+#+CALL: istate_sir_model(beta=0.3) :exports none :file istate_sir.csv
+
+We can use exactly the same gnuplot fragment to plot it, so we don't
+display that here, but it indeed produces the same plot.
+#+NAME: plot_istate_sir
+#+BEGIN_SRC gnuplot :var data=istate_sir_sim :noweb yes :exports results :file istate_sir.png
+  <<kappaplot>>
+  plot data using 1:2 with lines, \
+       data using 1:3 with lines, \
+       data using 1:4 with lines
+  reset
+#+END_SRC
+
+#+RESULTS: plot_istate_sir
+[[file:faster_sir.png]]
+
+** A faster epidemic
+
+Because we have left a key variable out of the model to be used when
+it is called, we can easily run it for a faster epidemic, say with the
+=beta= variable set to 0.5, and simulate the result without much
+additional work.
+
+#+NAME: faster_sir_sim
+#+CALL: istate_sir_model(beta=0.5) :exports none :file faster_sir.csv
+
+#+NAME: plot_faster_sir
+#+BEGIN_SRC gnuplot :var data=faster_sir_sim :noweb yes :exports results :file faster_sir.png
+  <<kappaplot>>
+  plot data using 1:2 with lines, \
+       data using 1:3 with lines, \
+       data using 1:4 with lines
+  reset
+#+END_SRC
+
+* Setup
+
+* Issues
+
+Issues should be reported to the [[https://orgmode.org/worg/org-mailing-list.html][Org-mode Mailing-list]].
