@@ -35,9 +35,9 @@
 ;; slashification.
 
 ;; There are numerous font face customization variables and a
-;; convenience function for running simulations. For simple plotting
-;; of results, see `ob-kappa.el' which integrates with `org-mode'
-
+;; convenience functions for running simulations and plotting
+;; results. For more flexible plotting of results, see `ob-kappa.el'
+;; which integrates with `org-mode'.
 
 ;; Customization group for Kappa mode.
 (defgroup kappa nil
@@ -231,13 +231,22 @@ variables and file names in Font-Lock mode."
        ("[+*/^<>=.;-]"                       . kappa-math-operator-face)
 ))))
 
+;;; Local key map
+
+(defvar kappa-mode-keymap (make-sparse-keymap)
+  "Kappa major mode keymap.")
+;; Add shortcuts for `kappa-run-sim' and `kappa-plot-sim'.
+(define-key kappa-mode-keymap "\C-c\C-r" 'kappa-run-sim)
+(define-key kappa-mode-keymap "\C-c\C-p" 'kappa-plot-sim)
+
 (define-derived-mode kappa-mode fundamental-mode "Kappa"
   "A major mode for editing models for the KaSim Kappa Simulator"
   (setq font-lock-defaults kappa-font-lock-defaults)
   (when kappa-tab-width
     (setq tab-width kappa-tab-width))
   (setq comment-start "//")
-  (setq comment-end ""))
+  (setq comment-end "")
+  (use-local-map kappa-mode-keymap))
 
 ;;;
 ;;; Running simulations
@@ -377,5 +386,127 @@ Related customization variables: `kappa-sim-executable-path',
     (setq kappa-sim-buffer-counter (+ 1 kappa-sim-buffer-counter))
     (message (format (concat "Done! See " buffer-name
                              " buffer for details")))))
+
+;;; Gnuplot related functions and variables.
+
+;; Global variable holding Gnuplot processes object for plotting if
+;; necessary.
+(defvar kappa-gnuplot-process ""
+  "Process object of a running Gnuplot process.
+
+The default value is \"\", indicating that no Gnuplot process has
+been started by the Kappa major mode yet.")
+
+(defun kappa-get-gnuplot-process nil
+  "Return the process object of the Gnuplot process associated
+with the Kappa major mode.
+
+This function requires the installation of Gnuplot.  You can find
+it at
+
+  * http://www.gnuplot.info/
+
+Side Effects: If `kappa-gnuplot-process' does not correspond to a
+process object (no running Gnuplot process is currently
+associated with the Kappa major mode), starts an asynchronous
+process using the command `kappa-gnuplot-executable-path' and
+returns the corresponding process object.  If
+`kappa-gnuplot-process' refers to an existing Gnuplot process
+with a status other than `run', kills it, starts a new
+asynchronous Gnuplot process and returns the new process object.
+In either case, prints the command to be executed to *Messages*,
+creates a *Kappa Gnuplot output* buffer (if none exists) and sets
+`kappa-gnuplot-process' to the process object associated with the
+newly started process.
+
+Related variables: `kappa-gnuplot-executable-path',
+`kappa-gnuplot-process'.
+"
+  (let ((status (process-status kappa-gnuplot-process)))
+    (if (eq status 'run) kappa-gnuplot-process
+
+      ;; Kill a potentially "hanging" process.
+      (if (not (null status)) (delete-process kappa-gnuplot-process))
+
+      ;; Start a new asynchronous Gnuplot process.
+      (message "Running Gnuplot as '%s -p'" kappa-gnuplot-executable-path)
+      (setq kappa-gnuplot-process
+            (start-process "gnuplot"
+                           (get-buffer-create "*Kappa Gnuplot output*")
+                           kappa-gnuplot-executable-path "-p")))))
+
+
+(defun kappa-plot-sim (&optional file-path columns output-image)
+  "Simple function for plotting a Kappa simulation file.
+
+  FILE-PATH is the full path to a file that can be read by
+            Gnuplot.  The first row is expected to contain the
+            headers for each column.
+
+  COLUMNS is a string containing the columns to be plotted
+          separated by space.  Default is \"1:2\" plotting the
+          first column (time) against the second one.
+
+By default the following options would be set in Gnuplot:
+autoscale, xtic auto, ytic auto, key autotitle columnhead,
+ylabel \"Number of Molecules\", xlabel \"Time\"
+
+This function requires the installation of Gnuplot and optionally
+gnuplot-mode.  You can find them at
+
+  * http://www.gnuplot.info/
+  * https://github.com/bruceravel/gnuplot-mode/
+
+Side Effects: If gnuplot-mode is available, sends commands to
+gnuplot-mode.  Otherwise, send commands to a dedicated Gnuplot
+process associated with the Kappa major mode.
+"
+  (interactive
+   (list (expand-file-name
+          (read-file-name
+           "Simulation output file: "
+           (file-truename kappa-prev-sim-output-file)
+           (file-truename kappa-prev-sim-output-file) 'confirm))
+         (read-string "Columns separated by space: "
+                      kappa-prev-plot-columns)
+	 (expand-file-name
+	  (read-file-name
+	   "Output image file: "
+	   (file-truename (concat (substring kappa-prev-sim-output-file 0 -3) "png"))
+	   (file-truename (concat (substring kappa-prev-sim-output-file 0 -3) "png")) 'confirm))
+	 ))
+
+  ;; Save parameters for later
+  (setq kappa-prev-sim-output-file file-path)
+  (setq kappa-prev-plot-columns columns)
+
+  (let ((gnuplot-commands
+         (concat
+	  "set terminal png\n"
+	  "set output \"" output-image "\"\n"
+	  "set autoscale\n"
+          "set xtic auto\n"
+          "set ytic auto\n"
+          "set key autotitle columnhead\n"
+          "set ylabel \"Count\"\n"
+          "set xlabel \"Time\"\n"
+          "set title \"" (file-name-nondirectory file-path) "\"\n"
+          "set datafile separator \",\"\n"
+          "plot "
+          (mapconcat
+           (lambda (n) (concat "\"" file-path "\" using " n " with lines"))
+           (split-string columns) ", \\\n") "\n")))
+
+    ;; Check if gnuplot-mode is available, otherwise just run Gnuplot
+    ;; in a shell.
+    (if (require 'gnuplot nil t)
+
+        ;; Use gnuplot-mode
+        (gnuplot-send-string-to-gnuplot gnuplot-commands nil)
+
+      ;; Send the Gnuplot commands to the Gnuplot process associated
+      ;; with the Kappa major mode.
+      (process-send-string (kappa-get-gnuplot-process) gnuplot-commands)))
+  (find-file output-image))
 
 (provide 'kappa-mode)
