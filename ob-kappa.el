@@ -57,39 +57,27 @@
      "\n" body "\n")))
 
 ;; This is the main function which is called to evaluate a code
-;; block.
+;; block. It writes the code block to a temporary file and calls
+;; `kappa-run-sim' saving output to the file given in the `:file'
+;; parameter or a temporary file if nil. It returns the file name
+;; for the results.
 ;;
-;; This function will evaluate the body of the source code and
-;; return the results as emacs-lisp depending on the value of the
-;; :results header argument
-;; - output means that the output to STDOUT will be captured and
-;;   returned
-;; - value means that the value of the last statement in the
-;;   source code block will be returned
-;;
-;; The most common first step in this function is the expansion of the
-;; PARAMS argument using `org-babel-process-params'.
-;;
-;; Please feel free to not implement options which aren't appropriate
-;; for your language (e.g. not all languages support interactive
-;; "session" evaluation).  Also you are free to define any new header
-;; arguments which you feel may be useful -- all header arguments
-;; specified by the user will be available in the PARAMS variable.
+;; Other parameters understood are:
+;; - `:time' simulation time limit (or zero)
+;; - `:events' simulation event limit (or zero)
+;; - `:points' simulation time per point
+;; defaults are as per `kappa-default-sim-*' customisable
+;; variables.
 (defun org-babel-execute:kappa (body params)
   "Execute a block of Kappa code with org-babel.
 This function is called by `org-babel-execute-src-block'"
   (message "executing Kappa source code block")
   (let* ((processed-params (org-babel-process-params params))
-         ;; set the session if the value of the session keyword is not the
-         ;; string `none'
-;         (session (unless (string= value "none")
-;                   (org-babel-kappa-initiate-session
-;                    (cdr (assq :session processed-params)))))
          ;; variables assigned for use in the block
          (vars (org-babel--get-vars processed-params))
-         (result-params (assq :result-params processed-params))
+         ; (result-params (assq :result-params processed-params))
          ;; either OUTPUT or VALUE which should behave as described above
-         (result-type (cdr (assq :result-type processed-params)))
+         ;(result-type (cdr (assq :result-type processed-params)))
          ;; expand the body with `org-babel-expand-body:kappa'
 	 (sim-time (eval (cdr (assq :time processed-params))))
 	 (sim-events (eval (cdr (assq :events processed-params))))
@@ -99,56 +87,20 @@ This function is called by `org-babel-execute-src-block'"
 	 (in-file (org-babel-temp-file "kappa-" ".ka"))
 	 (out-file (or (cdr (assq :file processed-params))
 		       (org-babel-temp-file "kappa-" ".csv"))))
-    ;; actually execute the source-code block either in a session or
-    ;; possibly by dropping it to a temporary file and evaluating the
-    ;; file.
-    ;; 
-    ;; for session based evaluation the functions defined in
-    ;; `org-babel-comint' will probably be helpful.
-    ;;
-    ;; for external evaluation the functions defined in
-    ;; `org-babel-eval' will probably be helpful.
-    ;;
-    ;; when forming a shell command, or a fragment of code in some
-    ;; other language, please preprocess any file names involved with
-    ;; the function `org-babel-process-file-name'. (See the way that
-    ;; function is used in the language files)
+
     (with-temp-file in-file
       (insert full-body))
-;    (message "result-type: %s" result-type)
-;    (message "sim-time: %s" sim-time)
-;    (message "full-body:\n%s" full-body)
     (kappa-run-sim
      (org-babel-process-file-name in-file)
      (org-babel-process-file-name out-file)
      sim-time sim-events sim-points t)
     out-file
-    ;(cond ((string= result-type "value") out-file)
-;	  (t nil))
-	  
     ))
-
-;; This function should be used to assign any variables in params in
-;; the context of the session environment.
-(defun org-babel-prep-session:kappa (session params)
-  "Prepare SESSION according to the header arguments specified in PARAMS."
-  )
 
 (defun org-babel-kappa-var-to-kappa (var)
   "Convert an elisp var into a string of kappa source code
 specifying a var of the same value."
   (format "%S" var))
-
-(defun org-babel-kappa-table-or-string (results)
-  "If the results look like a table, then convert them into an
-Emacs-lisp table, otherwise return the results as a string."
-  )
-
-(defun org-babel-kappa-initiate-session (&optional session)
-  "If there is not a current inferior-process-buffer in SESSION then create.
-Return the initialized session."
-  (unless (string= session "none")
-    ))
 
 (provide 'ob-kappa)
 ;;; ob-kappa.el ends here
