@@ -37,7 +37,7 @@
 (defvar org-babel-default-header-args:kappa
   '((:time . kappa-default-sim-time)
     (:events . kappa-default-sim-events)
-    (:points . kappa-default-sim-points))
+    (:points . kappa-default-sim-points)))
 
 ;; This function expands the body of a source code block by doing things like
 ;; prepending argument definitions to the body, it should be called by the
