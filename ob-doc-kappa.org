@@ -20,7 +20,10 @@
 * Introduction
 
 An /Emacs Org Babel language/ - provided to allow literate programming
-in the [[https://kappalanguage.org/][Kappa modelling language]].
+in the [[https://kappalanguage.org/][Kappa modelling language]]. It is based upon [[https://github.com/sstucki/kappa-emacs][Sandro Stucki and
+Ricardo Honorato-Zimmer's version]] extended with support for newer
+Kappa language syntax, to make it work with Org Mode, and to package
+it for convenient installation.
 
 * Installation
 ** Requirements
@@ -71,7 +74,6 @@ code for simulation and gnuplot code for plotting.
    (gnuplot . t)))
 #+END_SRC
 
- 
 * Examples
 ** Generic gnuplot boilerplate
 This fragment of gnuplot code will be reused for all of the plots. We
