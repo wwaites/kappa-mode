@@ -20,10 +20,10 @@
 * Introduction
 
 An /Emacs Org Babel language/ - provided to allow literate programming
-in the [[https://kappalanguage.org/][Kappa modelling language]]. It is based upon [[https://github.com/sstucki/kappa-emacs][Sandro Stucki and
-Ricardo Honorato-Zimmer's version]] extended with support for newer
-Kappa language syntax, to make it work with Org Mode, and to package
-it for convenient installation.
+in the [[https://kappalanguage.org/][Kappa modelling language]]. It is based upon [[https://github.com/sstucki/kappa-emacs][Sandro Stucki,
+Sebastian Jaramillo, and Ricardo Honorato-Zimmer's version]] extended
+with support for newer Kappa language syntax, to make it work with Org
+Mode, and to package it for convenient installation.
 
 * Installation
 ** Requirements
