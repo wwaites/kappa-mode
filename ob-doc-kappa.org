@@ -59,6 +59,11 @@ the following to your =init.el= to enable evaluation of Kappa language
 code for simulation and gnuplot code for plotting.
 
 #+BEGIN_SRC emacs-lisp :exports code
+;;; basic configurations for plain kappa-mode
+(require 'kappa-mode)
+(add-to-list 'auto-mode-alist '("\\.ka\\'" . kappa-mode))
+
+;;; use this as well for org-mode integration
 (org-babel-do-load-languages
  'org-babel-load-languages
  '((emacs-lisp . t)
