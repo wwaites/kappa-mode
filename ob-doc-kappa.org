@@ -3,10 +3,8 @@
 #+SEQ_TODO:   TODO(t) INPROGRESS(i) WAITING(w@) | DONE(d) CANCELED(c@)
 #+TAGS:       Write(w) Update(u) Fix(f) Check(c) noexport(n)
 #+TITLE:      Org-babel-kappa
-#+AUTHOR:     William Waites
+#+AUTHOR:     Sandro Stucki, Sebastian Jaramillo, Ricardo Honorato-Zimmer, William Waites
 #+LANGUAGE:   en
-#+HTML_LINK_UP:    index.html
-#+HTML_LINK_HOME:  https://orgmode.org/worg/
 
 #+begin_export html
   <div id="subtitle" style="float: center; text-align: center;">
