@@ -20,14 +20,17 @@
 * Introduction
 
 An /Emacs Org Babel language/ - provided to allow literate programming
-in the [[https://kappalanguage.org/][Kappa modelling language]]. A prerequisite, of course, is to have
-=KaSim=, the Kappa language simulator installed. It is free software and
-can be downloaded from that web site or built from source. It is also
-helpful to have [[https://gnuplot.info/][gnuplot]] installed for looking at the output of
-simulations.
-
+in the [[https://kappalanguage.org/][Kappa modelling language]].
 
 * Installation
+** Requirements
+Whilst it is possible to install this package to get =kappa-mode= for
+Emacs and Org Mode support, all this will get you on its own is syntax
+highlighing. That's nice, but to get more, support for simulation and
+plotting you need:
+- The =KaSim= software, either from the [[https://tools.kappalanguage.org/nightly-builds/][binary distribution]] or built [[https://github.com/Kappa-Dev/KappaTools][from source]]
+- [[https://gnuplot.info/][gnuplot]] for producing plots
+
 ** From MELPA
 This is the usual way to install. Simply add the standard incantation
 to your =init.el=,
@@ -63,10 +66,6 @@ code for simulation and gnuplot code for plotting.
    (gnuplot . t)))
 #+END_SRC
 
-* Requirements
-
-- The =KaSim= software, either from the [[https://tools.kappalanguage.org/nightly-builds/][binary distribution]] or built [[https://github.com/Kappa-Dev/KappaTools][from source]]
-- [[https://gnuplot.info/][gnuplot]] for producing plots
  
 * Examples
 ** Generic gnuplot boilerplate
@@ -201,8 +200,3 @@ additional work.
   reset
 #+END_SRC
 
-* Setup
-
-* Issues
-
-Issues should be reported to the [[https://orgmode.org/worg/org-mailing-list.html][Org-mode Mailing-list]].
